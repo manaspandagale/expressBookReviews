@@ -11,10 +11,20 @@ app.use(express.json());
 app.use("/customer",session({secret:"fingerprint_customer",resave: true, saveUninitialized: true}))
 
 app.use("/customer/auth/*", function auth(req,res,next){
-//Write the authenication mechanism here
+  const header = req.headers.authorization || "";
+  const bearerToken = header.startsWith("Bearer ") ? header.slice(7) : null;
+  const accessToken = bearerToken || req.session.authorization?.accessToken;
+  if (!accessToken) return res.status(401).json({ message: "Authentication required" });
+
+  try {
+    req.user = jwt.verify(accessToken, "access");
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid or expired access token" });
+  }
 });
  
-const PORT =5000;
+const PORT = process.env.PORT || 5000;
 
 app.use("/customer", customer_routes);
 app.use("/", genl_routes);
